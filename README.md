@@ -1,9 +1,23 @@
 # 🎮 Game Glitch Investigator: The Impossible Guesser
 
+> **Note:** *This is an updated version created for the TF AI110 assignment. The original student submission can be found [on the student's GitHub repo](https://github.com/JoshuaPina/ai110-module1show-gameglitchinvestigator-starter).*
+
+---
+
+## 🗒️ TF Notes & Updates
+
+This version of the project has been reviewed and updated from the original student submission. The following changes were made:
+
+- **Images organized** — `winning.png`, `pytest_edge_cases.png`, and `interesante.png` moved into an `assets/` folder to keep the project root clean.
+- **README updated** — Image references corrected to reflect new `assets/` paths; this notes section added for transparency.
+- **No logic changes** — All game logic, tests, and functionality remain as submitted by the student.
+
+---
+
 ## 🚨 The Situation
 
 You asked an AI to build a simple "Number Guessing Game" using Streamlit.
-It wrote the code, ran away, and now the game is unplayable. 
+It wrote the code, ran away, and now the game is unplayable.
 
 - You can't win.
 - The hints lie to you.
@@ -36,7 +50,7 @@ It wrote the code, ran away, and now the game is unplayable.
 
 ## 📸 Demo
 
-- [x] ![winning](winning.png)
+- [x] ![winning](assets/winning.png)
 
 ## ✅ Challenge 1: Advanced Edge-Case Testing
 
@@ -48,7 +62,7 @@ I added pytest coverage for three edge-case inputs that could break game logic:
 
 Edge-case tests were added to [tests/test_game_logic.py](tests/test_game_logic.py) and all tests pass.
 
-![Pytest edge-case run results](pytest_edge_cases.png)
+![Pytest edge-case run results](assets/pytest_edge_cases.png)
 
 ## 🚀 Stretch Features
 
