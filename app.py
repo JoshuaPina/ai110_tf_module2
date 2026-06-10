@@ -1,17 +1,22 @@
+import logging
 import random
 
 import streamlit as st
-from rich.console import Console
 
 from logic_utils import check_guess, get_range_for_difficulty, parse_guess, update_score
 
-console = Console()
+# Standard logging replaces rich.Console for debug output
+logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
+log = logging.getLogger(__name__)
 
+# ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Glitchy Guesser", page_icon="🎮")
 
 st.title("🎮 Game Glitch Investigator")
 st.caption("An AI-generated guessing game. Something is off.")
 
+# ── Sidebar: difficulty selector ─────────────────────────────────────────────
+# Player picks difficulty before or during a game; changing it resets state.
 st.sidebar.header("Settings")
 
 difficulty = st.sidebar.selectbox(
@@ -20,6 +25,7 @@ difficulty = st.sidebar.selectbox(
     index=1,
 )
 
+# Map each difficulty to a maximum number of allowed attempts
 attempt_limit_map = {
     "Easy": 6,
     "Normal": 8,
@@ -27,11 +33,15 @@ attempt_limit_map = {
 }
 attempt_limit = attempt_limit_map[difficulty]
 
+# Fetch the valid guess range for the selected difficulty
 low, high = get_range_for_difficulty(difficulty)
 
 st.sidebar.caption(f"Range: {low} to {high}")
 st.sidebar.caption(f"Attempts allowed: {attempt_limit}")
 
+# ── Session state initialisation ─────────────────────────────────────────────
+# Streamlit reruns the entire script on every interaction, so persistent values
+# must live in st.session_state. These blocks only run on the very first load.
 if "secret" not in st.session_state:
     st.session_state.secret = random.randint(low, high)
     st.session_state.difficulty = difficulty
@@ -48,6 +58,9 @@ if "status" not in st.session_state:
 if "history" not in st.session_state:
     st.session_state.history = []
 
+# ── Difficulty change detection ───────────────────────────────────────────────
+# If the player switched difficulty mid-game, reset everything so the new range
+# and attempt limit apply to a fresh round.
 if st.session_state.get("difficulty") != difficulty:
     st.session_state.secret = random.randint(low, high)
     st.session_state.attempts = 0
@@ -55,8 +68,9 @@ if st.session_state.get("difficulty") != difficulty:
     st.session_state.status = "playing"
     st.session_state.history = []
     st.session_state.difficulty = difficulty
-    console.log(f"Difficulty changed to {difficulty}; game state reset.")
+    log.debug("Difficulty changed to %s; game state reset.", difficulty)
 
+# ── Main game UI ──────────────────────────────────────────────────────────────
 st.subheader("Make a guess")
 
 st.info(
@@ -84,16 +98,18 @@ with col2:
 with col3:
     show_hint = st.checkbox("Show hint", value=True)
 
+# ── New game handler ──────────────────────────────────────────────────────────
 if new_game:
     st.session_state.attempts = 0
     st.session_state.secret = random.randint(low, high)
     st.session_state.score = 0
     st.session_state.status = "playing"
     st.session_state.history = []
-    console.log(f"New game started at difficulty {difficulty} with range {low}-{high}.")
+    log.debug("New game started at difficulty %s with range %d-%d.", difficulty, low, high)
     st.success("New game started.")
     st.rerun()
 
+# ── Block further input if game is already over ───────────────────────────────
 if st.session_state.status != "playing":
     if st.session_state.status == "won":
         st.success("You already won. Start a new game to play again.")
@@ -101,24 +117,30 @@ if st.session_state.status != "playing":
         st.error("Game over. Start a new game to try again.")
     st.stop()
 
+# ── Submit guess handler ──────────────────────────────────────────────────────
 if submit:
-    ok, guess_int, err = parse_guess(raw_guess)
+    # Parse and range-validate the raw text input
+    ok, guess_int, err = parse_guess(raw_guess, low=low, high=high)
 
     if not ok:
-        console.log(f"Rejected guess input: {raw_guess!r}")
+        # Input was invalid (empty, non-integer, or out of range)
+        log.debug("Rejected guess input: %r — %s", raw_guess, err)
         st.error(err)
     else:
         st.session_state.attempts += 1
         st.session_state.history.append(guess_int)
 
+        # Evaluate the guess against the hidden secret number
         outcome, message = check_guess(guess_int, st.session_state.secret)
-        console.log(
-            f"Guess #{st.session_state.attempts}: {guess_int} against secret {st.session_state.secret} -> {outcome}"
+        log.debug(
+            "Guess #%d: %d vs secret %d → %s",
+            st.session_state.attempts, guess_int, st.session_state.secret, outcome,
         )
 
         if show_hint:
             st.warning(message)
 
+        # Update the running score based on outcome and attempt count
         st.session_state.score = update_score(
             current_score=st.session_state.score,
             outcome=outcome,
@@ -133,6 +155,7 @@ if submit:
                 f"Final score: {st.session_state.score}"
             )
         elif st.session_state.attempts >= attempt_limit:
+            # Player used all their attempts without guessing correctly
             st.session_state.status = "lost"
             st.error(
                 f"Out of attempts! "
